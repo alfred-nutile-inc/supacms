@@ -1,0 +1,136 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# 🤖 Build and Development Rules
+
+This document defines the technical standards for building the Travel Insiders platform.
+
+It does **not** define business logic (which is documented separately).
+
+---
+
+## 🚀 Overview
+- UI: **Next.js** (App Directory, TypeScript, Tailwind, Shadcn, Supabase UI)
+- Database: **Supabase (Postgres)** — all queries through Supabase SDK.
+- Automation: **n8n.io** (called via Supabase functions when needed).
+
+All CLI operations use `npx`.
+
+---
+
+# 🛠️ Global NEVERS and ALWAYs
+
+## NEVER:
+- ❌ Write SQL migrations manually.  
+  Use Supabase migrations and CLI tools only.
+- ❌ Hardcode URLs, tokens, or environment-specific values.  
+  Load them from `.env` files only at runtime.
+- ❌ Use raw SQL connections inside Next.js apps.
+- ❌ Use modals or slideouts for CRUD views.
+
+## ALWAYS:
+- ✅ Use `npx supabase` for database schema changes, migrations, functions.
+- ✅ Use **Supabase UI** first, then **Shadcn** if missing.
+- ✅ Use Supabase SDK (`@supabase/supabase-js`) for all database operations.
+- ✅ Load all sensitive credentials via `.env` files.
+- ✅ Use path-based routing for resources (no nested modals).
+
+---
+
+# 🔥 UI Conventions
+
+- **Resource Routes:**
+  - Create: `/resource/create`
+  - View: `/resource/[uuid]`
+  - Edit: `/resource/[uuid]/edit`
+
+Example:
+- `/tasks/create`
+- `/tasks/7ff1bcbc-df0c-482b-89c8-391aac2521cf`
+- `/tasks/7ff1bcbc-df0c-482b-89c8-391aac2521cf/edit`
+
+- **Avatar**: Use Supabase Avatar component.  
+- **File Upload**: Use Supabase DropZone component via Shadcn import.
+
+---
+
+# 🗄️ Database & Supabase
+
+- **Migrations**: 
+  - Always use `npx supabase db` commands.
+  - Example: `npx supabase db diff --local`.
+- **Local Dev**:
+  - Use local Supabase URLs and ports.
+  - Connect through the exposed firewall IP.
+
+Example `.env` pattern:
+
+```ts
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://project.supabase.co";
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "your-default-key";
+
+	•	Pull Schema:
+
+npx supabase db pull --db-url=postgresql://...
+
+	•	Seed Data:
+
+npx supabase db dump --data-only -f supabase/seed.sql
+npx supabase db reset --local
+
+
+
+⸻
+
+📚 CLI Rules
+	•	Migrations: npx supabase db diff
+	•	Push: npx supabase db push
+	•	Pull: npx supabase db pull
+	•	Reset Local: npx supabase db reset --local
+	•	Always pass the --local flag during development.
+
+⸻
+
+🚀 Deployment
+	•	Supabase deployment docs:
+https://supabase.com/docs/guides/deployment
+	•	Follow .env driven defaults for production settings.
+
+⸻
+
+🛑 Reminders
+	•	Supabase is the source of truth.
+	•	No direct database writes from N8N unless triggered through a Supabase Function.
+	•	No API routes that bypass Supabase SDK (no direct fetch to database endpoints).
+
+part of your company instantly.) 🔥
+
+
+
+## Auth 
+
+All auth is managed by Supabse ui components so no form witing is needed 
+npx shadcn@latest add https://supabase.com/ui/r/supabase-client-nextjs.json
+Usage
+This block installs a Supabase client for connecting your Next.js project to Supabase. It's designed for use with the App Router and fully supports server-side rendering (SSR).
+
+If you've already set up your Supabase client—either using the npx create-next-app -e with-supabase template or another method—you can continue using your existing setup.
+
+Getting started
+First, add a .env file to your project with the following environment variables:
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+Copy
+If you're using supabase.com, you can find these values in the Connect modal under App Frameworks or in your project's API settings.
+
+If you're using a local instance of Supabase, you can find these values by running supabase start or supabase status (if you already have it running).
+
+This Supabase client is built for SSR with the Next.js App Router. If you're building a React SPA, use the React SPA client instead.
+
+Further reading
+Generating TypeScript types for your client
+

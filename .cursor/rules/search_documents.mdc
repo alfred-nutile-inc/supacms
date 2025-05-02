@@ -1,0 +1,104 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 🧭 Travel Advisor RAG Rules (rules.mdc)
+
+## 📘 Purpose
+This system enables storing and retrieving travel advisor profiles in a way that supports:
+- Chat-based retrieval using vector embeddings (RAG)
+- UI filtering by destination, specialties, and more
+
+---
+
+## 📦 documents Table Schema
+
+```sql
+CREATE TABLE documents (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT,
+  content TEXT NOT NULL,
+  embedding VECTOR, -- vector size depends on embedding model used
+  travel_advisor_id UUID,
+  metadata JSONB,
+  destinations TEXT[],
+  specialties TEXT[]
+);
+
+
+
+⸻
+
+🧬 Data Processing Pipeline (via n8n)
+	1.	Input JSON from scrape or import:
+	•	Raw advisor record with fields like full_name, description, knows_about, interests, etc.
+	2.	Build content field:
+	•	This is the core text that will be vectorized.
+	•	Constructed using an LLM or prompt like:
+
+{{full_name}} is a travel advisor based in {{city}}, {{state}} with {{years_experience}}. 
+They specialize in {{interests.join(', ')}} and work with suppliers like {{suppliers.join(', ')}}.
+Known for helping clients plan trips to {{destinations.join(', ')}}, they offer a customized, non-cookie-cutter approach.
+
+
+	3.	Store other fields:
+	•	metadata: full original JSON or cleaned object with public fields
+	•	destinations: e.g. ["Alaska", "Europe", "Hawaii"]
+	•	specialties: e.g. ["Family Vacations", "Adventure", "Cruises"]
+
+⸻
+
+🤖 Chat Search (RAG)
+	•	Use embedding search against content to find relevant advisors for queries like:
+“Looking for someone who knows Alaska and does family-friendly cruises.”
+	•	Once retrieved, use metadata to display image, profile link, and specialties.
+
+⸻
+
+🔍 UI Filtering
+	•	Filter advisors using SQL like:
+
+SELECT * FROM documents WHERE 'Alaska' = ANY(destinations);
+SELECT * FROM documents WHERE 'Adventure' = ANY(specialties);
+
+
+	•	For compound filters:
+
+SELECT * FROM documents
+WHERE 'Alaska' = ANY(destinations)
+  AND 'Family Vacations' = ANY(specialties);
+
+
+
+⸻
+
+🧩 Integration Tips
+	•	Add GIN indexes for fast filtering:
+
+CREATE INDEX idx_destinations ON documents USING GIN (destinations);
+CREATE INDEX idx_specialties ON documents USING GIN (specialties);
+
+
+	•	For embedding vector column: match the model you use (e.g., OpenAI = 1536 floats)
+	•	Frontend filters should mirror destinations and specialties tag options
+
+⸻
+
+🗂️ Example Advisor Content
+
+Kelly Jo Rodriguez is a third-generation Alaskan travel advisor based in Anchorage. 
+With over 25 years of experience, she specializes in tailor-made trips to Alaska, Europe, and beyond. 
+Her focus is on adventure, family vacations, cruises, and wildlife experiences. 
+She works with trusted suppliers like UnCruise Adventures and CIE Tours. 
+Kelly is known for building custom trips based on each client’s needs — never cookie-cutter.
+
+
+
+⸻
+
+✨ Future Extensions
+	•	Add languages_spoken, availability, or rating fields
+	•	Join with a conversations table to track user interactions with advisors
+	•	Add AI-generated summaries to metadata for instant card previews
+
