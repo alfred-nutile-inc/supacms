@@ -1,0 +1,66 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Perfect — you’re laying down a very intuitive and flexible admin interface pattern. Here’s how to articulate this next AI prompt so it can help scaffold the UI logic, routing, and data handling for form-driven CRUD. We’ll turn your vision into a clear design + logic prompt that can drive frontend development or even generate code later.
+
+⸻
+
+🧭 Prompt to Generate Form-Driven UI Layout and Routing
+
+You are helping build a no-code admin dashboard powered by Supabase. Authentication is already handled. The system uses a table called public.forms, where each row represents a JSON configuration for a form to create or edit data for a given table (e.g., articles). The JSON describes the form layout and field types.
+
+⸻
+
+🗂️ Current Route: /forms
+	•	This route shows a list of all forms stored in the forms table.
+	•	Each row includes:
+	•	name (human-readable)
+	•	table_name (e.g., “articles”)
+	•	A button or link: Edit Form
+	•	A link: View All Records
+	•	Goes to /forms/[table_name]/all
+	•	A single “New Form” button appears (functionality coming later).
+
+⸻
+
+🔄 Route: /forms/[table_name]/all
+	•	This page fetches records from the specified table (articles, etc).
+	•	It uses the JSON config from the forms table to:
+	•	Know which fields to show in the table (e.g., title, published, id)
+	•	Each row has an Edit button:
+	•	Goes to /forms/[table_name]/[record_id]/edit
+
+⸻
+
+📝 Route: /forms/[table_name]/[record_id]/edit
+	•	This page renders a dynamic form based on the JSON stored in the forms table (row with table_name = articles).
+	•	The form fields (text, checkbox, file, relation, etc) are derived from the fields array in that JSON.
+	•	On submit, it updates the underlying table (articles, in this example) with the new data.
+
+⸻
+
+💾 Data Source
+	•	All form metadata comes from the forms table (JSON-driven).
+	•	All data being viewed/edited comes from the actual Postgres table referenced by table_name.
+
+⸻
+
+🎯 Task
+
+Based on the above:
+	•	Generate a component layout and logic tree for this interface.
+	•	Define the routing structure clearly.
+	•	Provide notes for what data each page needs to load (e.g., useEffect for fetching JSON + data).
+	•	Keep the interface simple and minimal (Next.js, Tailwind, or your choice).
+	•	Future-proof this so it’s easy to add the “New Form” builder step later.
+
+⸻
+
+Would you like me to return:
+	•	A React route map + layout tree
+	•	Or Next.js file structure + pseudocode for the pages
+	•	Or the actual React code for one of the routes?
+
+Let me know which direction you’d like to go first — /forms, /forms/articles/all, or /forms/articles/[id]/edit.
