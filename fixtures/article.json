@@ -1,0 +1,64 @@
+{
+    "fields": [
+      {
+        "name": "title",
+        "type": "text",
+        "label": "Title",
+        "validations": [
+          "required",
+          "max:255"
+        ]
+      },
+      {
+        "name": "content",
+        "type": "textarea",
+        "label": "Content",
+        "validations": [
+          "required",
+          "max:5000"
+        ]
+      },
+      {
+        "name": "published",
+        "type": "checkbox",
+        "label": "Published",
+        "default": false,
+        "validations": []
+      },
+      {
+        "acl": "public",
+        "name": "header_url",
+        "type": "file",
+        "label": "Header Image",
+        "bucket": "article-assets",
+        "validations": [
+          "file",
+          "image"
+        ],
+        "storage_path": "public/articles/header_images"
+      },
+      {
+        "name": "tags",
+        "type": "array",
+        "label": "Tags",
+        "item_type": "text",
+        "validations": [
+          "required"
+        ]
+      },
+      {
+        "name": "author_id",
+        "type": "relation",
+        "label": "Author",
+        "relation": {
+          "table": "authors",
+          "label_field": "last_name",
+          "value_field": "id"
+        },
+        "validations": [
+          "required"
+        ]
+      }
+    ],
+    "form_name": "articles"
+  }

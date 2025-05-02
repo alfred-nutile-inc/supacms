@@ -1,0 +1,17 @@
+SELECT
+  policyname AS policy_name,
+  cmd AS command,
+  roles,
+  permissive,
+  qual AS using_expression,
+  with_check AS with_check_expression
+FROM
+  pg_policies
+WHERE
+  schemaname = 'public'
+  AND tablename IN ('authors', 'articles');
+FROM
+  pg_policies
+WHERE
+  schemaname = 'public'
+  AND tablename IN ('authors', 'articles');
