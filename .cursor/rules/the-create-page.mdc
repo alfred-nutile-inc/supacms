@@ -1,0 +1,96 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Perfect. Here’s how to explain that clearly and correctly to the AI in a way that drives it toward rendering the dynamic form — not dumping the JSON — using ShadCN UI components.
+
+⸻
+
+✅ Prompt: Generate Dynamic Form from JSON using ShadCN UI
+
+You are generating a dynamic form UI in React using the ShadCN component system.
+The form definition is stored as JSON (already loaded from the forms table).
+This JSON includes a "fields" array, where each object defines how the input should be rendered.
+
+⸻
+
+🔁 Behavior
+
+You must:
+	•	Iterate over the fields array in the JSON.
+	•	For each field:
+	•	Use the "label" for the input label
+	•	Use the "type" to determine which ShadCN input component to render (Input, Textarea, Checkbox, etc.)
+	•	Use "validations" to apply basic validation (e.g., "required", "max:255")
+	•	Use "description" (if provided) to render helper text
+	•	For "file" types:
+	•	Render a file uploader and store the result in Supabase storage using the "bucket" and "storage_path"
+	•	For "relation" types:
+	•	Render a Select or Combobox that loads options from the related table using relation.table, value_field, and label_field
+	•	For "array" types:
+	•	Render a tag-like input for multiple text values
+
+⸻
+
+💡 Example Form JSON
+
+{
+  "form_name": "articles",
+  "fields": [
+    {
+      "name": "title",
+      "label": "Title",
+      "type": "text",
+      "validations": ["required", "max:255"],
+      "description": "Enter the article title"
+    },
+    {
+      "name": "published",
+      "label": "Published",
+      "type": "checkbox",
+      "validations": []
+    },
+    {
+      "name": "header_url",
+      "label": "Header Image",
+      "type": "file",
+      "bucket": "article-assets",
+      "storage_path": "public/articles/header_images",
+      "validations": ["file", "image"]
+    },
+    {
+      "name": "author_id",
+      "label": "Author",
+      "type": "relation",
+      "relation": {
+        "table": "authors",
+        "value_field": "id",
+        "label_field": "last_name"
+      },
+      "validations": ["required"]
+    }
+  ]
+}
+
+
+
+⸻
+
+✅ Goal
+
+Render the entire form using useState to track values.
+On submit, either:
+	•	Upload files to Supabase storage (if any)
+	•	Insert a new row into the relevant Supabase table
+All logic is derived from the JSON — no hardcoded field names.
+
+⸻
+
+📍 Summary for the AI
+
+Don’t render the raw JSON. Instead, use the structure of the JSON to render dynamic ShadCN form components.
+
+⸻
+
+Want me to write the DynamicForm.tsx component to do this?

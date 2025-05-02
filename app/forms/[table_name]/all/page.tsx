@@ -40,7 +40,15 @@ export default async function RecordsListPage({ params }: { params: { table_name
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6 capitalize">{params.table_name} Records</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold capitalize">{params.table_name} Records</h1>
+        <Link
+          href={`/forms/${params.table_name}/create`}
+          className="inline-block px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors font-semibold"
+        >
+          + Create
+        </Link>
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
