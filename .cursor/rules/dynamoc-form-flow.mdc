@@ -25,6 +25,62 @@ You are helping build a no-code admin dashboard powered by Supabase. Authenticat
 
 ⸻
 
+NOTE: From here on it is dyanamic routing
+
+Yes — what you’re describing is totally possible in Next.js, even with its file-based routing, using dynamic segments and catch-all routes.
+
+Here’s the key: for /forms/[table_name]/[record_id]/edit, you can use nested dynamic routes, and it works cleanly in Next.js 13/14+ (app router) or pages-based router too.
+
+⸻
+
+✅ Next.js Route Strategy (Dynamic Form Editing)
+
+You want this route:
+
+/forms/[table_name]/[record_id]/edit
+
+🧱 Here’s how to structure this in app/ router (Next.js 13+):
+
+app/
+├─ forms/
+│  ├─ [table_name]/
+│  │  ├─ [record_id]/
+│  │  │  └─ edit/
+│  │  │     └─ page.tsx  ← this renders the dynamic form
+
+Then in app/forms/[table_name]/[record_id]/edit/page.tsx:
+
+export default async function EditForm({ params }) {
+  const { table_name, record_id } = params;
+
+  // 1. Fetch the JSON form config from `forms` table where table_name = table_name
+  // 2. Fetch the record from the `table_name` table using `record_id`
+  // 3. Render a form based on JSON + prefilled data
+}
+
+✅ Yes, You Can Do This
+	•	Next.js will match all these dynamic segments properly.
+	•	It’s clean, scalable, and allows your JSON-based UI logic to dynamically drive the form rendering.
+	•	You just need to query params.table_name and params.record_id.
+
+⸻
+
+> NOTE fomr here on it is dyanmic routing
+
+
+/forms/[table_name]/[record_id]/edit
+	•	This is a dynamic route that renders a form for editing a single record in the selected table.
+	•	It uses:
+	•	params.table_name to determine which table to update.
+	•	params.record_id to fetch the existing record.
+	•	The form schema stored in public.forms (filtered by table_name) to render the fields.
+
+Example:
+	•	/forms/articles/1/edit → Edits record 1 in table articles
+	•	Uses the JSON schema stored for "articles" in the forms table
+
+
+
 🔄 Route: /forms/[table_name]/all
 	•	This page fetches records from the specified table (articles, etc).
 	•	It uses the JSON config from the forms table to:

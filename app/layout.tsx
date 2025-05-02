@@ -1,0 +1,18 @@
+import '../src/app/globals.css';
+import Nav from '../src/components/ui/nav';
+
+export const metadata = {
+  title: 'Supabase Forms Admin',
+  description: 'No-code admin dashboard for Supabase-backed forms',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className="dark">
+      <body className="bg-zinc-950 text-zinc-100 min-h-screen">
+        <Nav />
+        <main className="max-w-5xl mx-auto pt-8">{children}</main>
+      </body>
+    </html>
+  );
+} 
