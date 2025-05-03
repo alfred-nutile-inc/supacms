@@ -20,7 +20,7 @@ export default async function CreateRecordPage({ params }: { params: { table_nam
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-4">Create {params.table_name} Record</h1>
-      <DynamicForm fields={form?.json?.fields || []} />
+      <DynamicForm fields={form?.json?.fields || []} tableName={params.table_name} />
     </div>
   );
 } 

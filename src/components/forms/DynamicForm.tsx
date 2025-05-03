@@ -4,6 +4,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -25,10 +26,13 @@ interface Field {
 
 interface DynamicFormProps {
   fields: Field[];
+  tableName: string;
   onSubmit?: (values: Record<string, any>) => void;
 }
 
-export default function DynamicForm({ fields, onSubmit }: DynamicFormProps) {
+export default function DynamicForm({ fields, tableName, onSubmit }: DynamicFormProps) {
+  const router = useRouter();
+  console.log("table", tableName);
   const [values, setValues] = useState<Record<string, any>>(() => {
     const initial: Record<string, any> = {};
     fields.forEach((f) => {
@@ -43,24 +47,45 @@ export default function DynamicForm({ fields, onSubmit }: DynamicFormProps) {
   const [tagInput, setTagInput] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fields.forEach(async (f) => {
-      if (f.type === "relation" && f.relation) {
-        const { data, error } = await supabase
-          .from(f.relation.table)
-          .select(`${f.relation.value_field}, ${f.relation.label_field}`);
-        if (!error && data) {
-          setRelationOptions((prev) => ({
-            ...prev,
-            [f.name]: data.map((row: any) => ({
-              value: row[f.relation.value_field],
-              label: row[f.relation.label_field],
+    const loadRelations = async () => {
+      const relationFields = fields.filter((f) => f.type === "relation" && f.relation);
+  
+      const results = await Promise.all(
+        relationFields.map(async (field) => {
+          const { relation } = field;
+          const { data, error } = await supabase
+            .from(relation.table)
+            .select(`${relation.value_field}, ${relation.label_field}`);
+  
+          if (error) {
+            console.error(`Error loading relation for field "${field.name}" from table "${relation.table}":`, error);
+            return { name: field.name, options: [] };
+          }
+  
+          if (!data || data.length === 0) {
+            console.warn(`No relation data found for field "${field.name}"`);
+          }
+  
+          return {
+            name: field.name,
+            options: data.map((row: any) => ({
+              value: row[relation.value_field],
+              label: row[relation.label_field],
             })),
-          }));
-        }
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+          };
+        })
+      );
+  
+      const newOptions: Record<string, any[]> = {};
+      results.forEach((r) => {
+        newOptions[r.name] = r.options;
+      });
+  
+      setRelationOptions(newOptions);
+    };
+  
+    loadRelations();
+  }, [fields]);
 
   // Debug: log relationOptions state
   console.log('relationOptions', relationOptions);
@@ -112,11 +137,27 @@ export default function DynamicForm({ fields, onSubmit }: DynamicFormProps) {
     return Object.keys(errs).length === 0;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-    if (onSubmit) onSubmit(values);
-    else console.log(values);
+    if (onSubmit) {
+      onSubmit(values);
+    } else if (tableName) {
+      const cleanValues = Object.fromEntries(
+        Object.entries(values).filter(([_, v]) => v !== "")
+      );
+      const { data, error } = await supabase.from(tableName).insert([cleanValues]).select();
+      console.log("Insert result:", { data, error });
+      if (error) {
+        alert(`Error: ${error.message}`);
+      } else if (data && data[0] && data[0].id) {
+        router.push(`/forms/${tableName}/${data[0].id}/edit`);
+      } else {
+        alert("Saved, but could not get new record ID.");
+      }
+    } else {
+      console.log(values);
+    }
   }
 
   return (
