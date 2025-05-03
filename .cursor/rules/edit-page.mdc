@@ -1,0 +1,62 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Yes — let’s now adapt your DynamicForm.tsx to work for an Edit Page instead of just Create.
+
+⸻
+
+✅ Prompt for Edit Page
+
+Here’s the new prompt specifically tailored to editing an existing record:
+
+⸻
+
+🧠 Prompt: Generate Dynamic Edit Form from JSON using ShadCN UI
+
+You are generating a dynamic form UI for editing an existing record using the ShadCN component system in React.
+
+The form definition is stored as JSON (already loaded from the forms table). The existing record data is already loaded from Supabase (data from the tableName).
+
+⸻
+
+🔁 Behavior
+
+You must:
+	•	Iterate over the fields array from the form JSON.
+	•	Use field.label, field.type, field.validations, and field.description just like in the create form.
+	•	Pre-populate each input’s value from existingRecord[field.name].
+	•	Use useState to update changes.
+	•	For relation fields:
+	•	Load select options from the related table and default the selected value from existingRecord.
+	•	For file fields:
+	•	Display the existing filename (if available).
+	•	Let users optionally upload a replacement.
+	•	Store new uploads to Supabase Storage using the bucket and storage_path.
+	•	On submit:
+	•	Upload files (if changed).
+	•	Update the record in Supabase using .update() where id = existingRecord.id.
+	•	Do not hardcode any field names — everything comes from the JSON.
+
+⸻
+
+🧩 Required Props
+
+<DynamicEditForm
+  fields={formJson.fields}
+  tableName="articles"
+  existingRecord={record}
+/>
+
+
+
+⸻
+
+✅ Goal
+
+Render an Edit Form based entirely on the JSON form schema, with pre-filled values and logic to update Supabase correctly.
+
+⸻
+
+Would you like me to now write that DynamicEditForm.tsx component for you using ShadCN?
