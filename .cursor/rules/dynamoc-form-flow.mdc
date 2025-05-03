@@ -3,120 +3,116 @@ description:
 globs: 
 alwaysApply: false
 ---
-Perfect — you’re laying down a very intuitive and flexible admin interface pattern. Here’s how to articulate this next AI prompt so it can help scaffold the UI logic, routing, and data handling for form-driven CRUD. We’ll turn your vision into a clear design + logic prompt that can drive frontend development or even generate code later.
+# 📄 Rule: Dynamic Form-Driven UI with File Upload Support
 
-⸻
+## System Overview
 
-🧭 Prompt to Generate Form-Driven UI Layout and Routing
+You are building a no-code admin dashboard powered by Supabase. Each form is defined by a row in the `public.forms` table, where a JSON configuration describes how to render and validate input fields. These forms dynamically handle creating and editing records in various tables, such as `articles`, and now include **file upload support** via a separate table: `forms.files`.
 
-You are helping build a no-code admin dashboard powered by Supabase. Authentication is already handled. The system uses a table called public.forms, where each row represents a JSON configuration for a form to create or edit data for a given table (e.g., articles). The JSON describes the form layout and field types.
+---
 
-⸻
+## ✅ File Upload Field Rule
 
-🗂️ Current Route: /forms
-	•	This route shows a list of all forms stored in the forms table.
-	•	Each row includes:
-	•	name (human-readable)
-	•	table_name (e.g., “articles”)
-	•	A button or link: Edit Form
-	•	A link: View All Records
-	•	Goes to /forms/[table_name]/all
-	•	A single “New Form” button appears (functionality coming later).
+When a field in the JSON schema has `"type": "file"`, it triggers the system to:
 
-⸻
+1. Render a file upload UI in the form.
+2. Upload the file to Supabase Storage using the specified `bucket` and `storage_path`.
+3. Save a record in `forms.files` linking the uploaded file to the parent record (`articles`, etc.).
 
-NOTE: From here on it is dyanamic routing
+### Example JSON Field
 
-Yes — what you’re describing is totally possible in Next.js, even with its file-based routing, using dynamic segments and catch-all routes.
-
-Here’s the key: for /forms/[table_name]/[record_id]/edit, you can use nested dynamic routes, and it works cleanly in Next.js 13/14+ (app router) or pages-based router too.
-
-⸻
-
-✅ Next.js Route Strategy (Dynamic Form Editing)
-
-You want this route:
-
-/forms/[table_name]/[record_id]/edit
-
-🧱 Here’s how to structure this in app/ router (Next.js 13+):
-
-app/
-├─ forms/
-│  ├─ [table_name]/
-│  │  ├─ [record_id]/
-│  │  │  └─ edit/
-│  │  │     └─ page.tsx  ← this renders the dynamic form
-
-Then in app/forms/[table_name]/[record_id]/edit/page.tsx:
-
-export default async function EditForm({ params }) {
-  const { table_name, record_id } = params;
-
-  // 1. Fetch the JSON form config from `forms` table where table_name = table_name
-  // 2. Fetch the record from the `table_name` table using `record_id`
-  // 3. Render a form based on JSON + prefilled data
+```json
+{
+  "acl": "public",
+  "name": "header_url",
+  "type": "file",
+  "label": "Header Image",
+  "bucket": "article-assets",
+  "validations": ["file", "image"],
+  "storage_path": "public/articles/header_images"
 }
 
-✅ Yes, You Can Do This
-	•	Next.js will match all these dynamic segments properly.
-	•	It’s clean, scalable, and allows your JSON-based UI logic to dynamically drive the form rendering.
-	•	You just need to query params.table_name and params.record_id.
+
 
 ⸻
 
-> NOTE fomr here on it is dyanmic routing
+📂 forms.files Table (PostgreSQL SQL Migration)
 
+create schema if not exists forms;
+
+create table if not exists forms.files (
+  id bigserial primary key,
+  resource_id uuid not null,
+  resource_table_name text not null,
+  field_name text not null,
+
+  bucket text not null,
+  path text not null,
+  acl text default 'public',
+
+  filename text not null,
+  mime_type text,
+  size bigint,
+
+  metadata jsonb,
+
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+create index on forms.files (resource_id, resource_table_name);
+create index on forms.files (field_name);
+
+
+
+⸻
+
+🔄 Route Behavior (Next.js Layout)
+
+/forms
+	•	List of all available form configurations from public.forms.
+	•	Each form row shows:
+	•	name
+	•	table_name
+	•	[Edit Form] button
+	•	[View All Records] → /forms/[table_name]/all
+
+⸻
+
+/forms/[table_name]/all
+	•	Fetches and displays all records in the given table.
+	•	Uses JSON config from public.forms to:
+	•	Determine which columns to show
+	•	Display an Edit button per row: /forms/[table_name]/[record_id]/edit
+
+⸻
 
 /forms/[table_name]/[record_id]/edit
-	•	This is a dynamic route that renders a form for editing a single record in the selected table.
-	•	It uses:
-	•	params.table_name to determine which table to update.
-	•	params.record_id to fetch the existing record.
-	•	The form schema stored in public.forms (filtered by table_name) to render the fields.
-
-Example:
-	•	/forms/articles/1/edit → Edits record 1 in table articles
-	•	Uses the JSON schema stored for "articles" in the forms table
-
-
-
-🔄 Route: /forms/[table_name]/all
-	•	This page fetches records from the specified table (articles, etc).
-	•	It uses the JSON config from the forms table to:
-	•	Know which fields to show in the table (e.g., title, published, id)
-	•	Each row has an Edit button:
-	•	Goes to /forms/[table_name]/[record_id]/edit
+	•	Dynamically renders a form for editing a single record.
+	•	Steps:
+	1.	Get the form JSON where table_name = [table_name]
+	2.	Get the record where id = [record_id]
+	3.	Fetch any matching forms.files by resource_id and field_name
+	4.	Render inputs for fields (text, select, file, etc.)
+	5.	On submit, update both:
+	•	The table record
+	•	The file list (new uploads go into forms.files, old ones can be marked or deleted)
 
 ⸻
 
-📝 Route: /forms/[table_name]/[record_id]/edit
-	•	This page renders a dynamic form based on the JSON stored in the forms table (row with table_name = articles).
-	•	The form fields (text, checkbox, file, relation, etc) are derived from the fields array in that JSON.
-	•	On submit, it updates the underlying table (articles, in this example) with the new data.
+🎯 Future Features
+	•	🆕 Form builder for creating/editing form JSON (/forms/new)
+	•	✅ Auto-create buckets if missing
+	•	🖼️ File previews for image uploads
+	•	🗑️ Soft delete or version control in forms.files
 
 ⸻
 
-💾 Data Source
-	•	All form metadata comes from the forms table (JSON-driven).
-	•	All data being viewed/edited comes from the actual Postgres table referenced by table_name.
+💡 Pro Tip
 
-⸻
+All file uploads are related to content by:
+	•	resource_id → the UUID of the related record
+	•	resource_table_name → e.g., articles
+	•	field_name → e.g., header_url, images
 
-🎯 Task
-
-Based on the above:
-	•	Generate a component layout and logic tree for this interface.
-	•	Define the routing structure clearly.
-	•	Provide notes for what data each page needs to load (e.g., useEffect for fetching JSON + data).
-	•	Keep the interface simple and minimal (Next.js, Tailwind, or your choice).
-	•	Future-proof this so it’s easy to add the “New Form” builder step later.
-
-⸻
-
-Would you like me to return:
-	•	A React route map + layout tree
-	•	Or Next.js file structure + pseudocode for the pages
-	•	Or the actual React code for one of the routes?
-
-Let me know which direction you’d like to go first — /forms, /forms/articles/all, or /forms/articles/[id]/edit.
+This allows multiple file fields per resource, all cleanly managed via metadata.

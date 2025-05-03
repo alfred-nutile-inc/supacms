@@ -1,0 +1,62 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Here’s a Markdown file you can add to your cursor project to define and document the file upload rule based on your system:
+
+# 🗂️ Rule: File Upload Field Configuration
+
+## Rule Name
+`file_upload_field`
+
+## Description
+This rule enables a dynamic form field of type `file` that integrates with the system’s file storage table (`forms.files`). It supports single or multiple file uploads and stores file metadata while linking uploads to specific records using a many-to-one relationship.
+
+## Example JSON Field
+
+```json
+{
+  "acl": "public",
+  "name": "header_url",
+  "type": "file",
+  "label": "Header Image",
+  "bucket": "article-assets",
+  "validations": [
+    "file",
+    "image"
+  ],
+  "storage_path": "public/articles/header_images"
+}
+
+Requirements
+	•	bucket: A Supabase Storage bucket. Must exist.
+	•	storage_path: Relative path inside the bucket to store the file.
+	•	acl: Access control (e.g., "public" or "private").
+	•	type: Must be "file" to trigger upload handling.
+	•	validations: Array to specify file constraints (file, image, etc.).
+
+System Behavior
+	•	Uploads are stored in the specified bucket and path.
+	•	A record is inserted into forms.files:
+	•	resource_id
+	•	resource_table_name
+	•	field_name
+	•	bucket
+	•	path
+	•	acl
+	•	Other metadata (e.g. mime_type, size, uploaded_at)
+	•	On form render, related files are fetched via resource_id, resource_table_name, and field_name.
+
+Usage
+
+Attach this field configuration to any form schema where a file (image, PDF, etc.) is required. The frontend renderer should support:
+	•	Upload UI
+	•	Preview (if image)
+	•	Handling of uploaded file metadata
+
+Notes
+	•	Buckets must be pre-created.
+	•	This system supports versioning, previews, and access control via metadata expansion in the future.
+
+Let me know if you'd like a YAML version or if you want to define this as part of a schema in Cursor’s DSL.
