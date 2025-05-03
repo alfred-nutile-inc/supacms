@@ -28,12 +28,16 @@ interface DynamicFormProps {
   fields: Field[];
   tableName: string;
   onSubmit?: (values: Record<string, any>) => void;
+  initialValues?: Record<string, any>;
+  mode?: 'create' | 'edit';
+  recordId?: string;
 }
 
-export default function DynamicForm({ fields, tableName, onSubmit }: DynamicFormProps) {
+export default function DynamicForm({ fields, tableName, onSubmit, initialValues, mode = 'create', recordId }: DynamicFormProps) {
   const router = useRouter();
   console.log("table", tableName);
   const [values, setValues] = useState<Record<string, any>>(() => {
+    if (initialValues) return { ...initialValues };
     const initial: Record<string, any> = {};
     fields.forEach((f) => {
       if (f.type === "checkbox") initial[f.name] = false;
@@ -45,6 +49,10 @@ export default function DynamicForm({ fields, tableName, onSubmit }: DynamicForm
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [relationOptions, setRelationOptions] = useState<Record<string, Array<{ value: any; label: string }>>>({});
   const [tagInput, setTagInput] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (initialValues) setValues({ ...initialValues });
+  }, [initialValues]);
 
   useEffect(() => {
     const loadRelations = async () => {
@@ -146,14 +154,19 @@ export default function DynamicForm({ fields, tableName, onSubmit }: DynamicForm
       const cleanValues = Object.fromEntries(
         Object.entries(values).filter(([_, v]) => v !== "")
       );
-      const { data, error } = await supabase.from(tableName).insert([cleanValues]).select();
-      console.log("Insert result:", { data, error });
+      let data, error;
+      if (mode === 'edit' && recordId) {
+        ({ data, error } = await supabase.from(tableName).update(cleanValues).eq('id', recordId).select());
+      } else {
+        ({ data, error } = await supabase.from(tableName).insert([cleanValues]).select());
+      }
+      console.log(mode === 'edit' ? "Update result:" : "Insert result:", { data, error });
       if (error) {
         alert(`Error: ${error.message}`);
       } else if (data && data[0] && data[0].id) {
         router.push(`/forms/${tableName}/${data[0].id}/edit`);
       } else {
-        alert("Saved, but could not get new record ID.");
+        alert("Saved, but could not get record ID.");
       }
     } else {
       console.log(values);
