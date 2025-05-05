@@ -55,6 +55,7 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
   const [relationOptions, setRelationOptions] = useState<Record<string, Array<{ value: any; label: string }>>>({});
   const [tagInput, setTagInput] = useState<Record<string, string>>({});
   const [existingFiles, setExistingFiles] = useState<Record<string, any[]>>({});
+  const [isDeleting, setIsDeleting] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (initialValues) setValues({ ...initialValues });
@@ -220,6 +221,61 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
     }
   }
 
+  // Add a function to delete a file
+  const handleDeleteFile = async (file: any) => {
+    if (!file || !file.id) return;
+    
+    // Set loading state for this file
+    setIsDeleting(prev => ({ ...prev, [file.id]: true }));
+    
+    try {
+      console.log('Deleting file:', file);
+      
+      // First, delete from storage bucket
+      const { error: storageError } = await supabase
+        .storage
+        .from(file.bucket)
+        .remove([file.path]);
+      
+      if (storageError) {
+        console.error('Error deleting file from storage:', storageError);
+        alert(`Error deleting file from storage: ${storageError.message}`);
+        return;
+      }
+      
+      // Then, delete from files table
+      const { error: dbError } = await supabase
+        .from('files')
+        .delete()
+        .eq('id', file.id);
+      
+      if (dbError) {
+        console.error('Error deleting file record:', dbError);
+        alert(`Error deleting file record: ${dbError.message}`);
+        return;
+      }
+      
+      // Update UI by removing the file from state
+      setExistingFiles(prev => {
+        const newFiles = { ...prev };
+        
+        // Find which field this file belongs to
+        Object.keys(newFiles).forEach(fieldName => {
+          newFiles[fieldName] = newFiles[fieldName].filter(f => f.id !== file.id);
+        });
+        
+        return newFiles;
+      });
+      
+      console.log('File deleted successfully');
+    } catch (err) {
+      console.error('Error in delete process:', err);
+      alert('An unexpected error occurred while deleting the file');
+    } finally {
+      setIsDeleting(prev => ({ ...prev, [file.id]: false }));
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl mx-auto p-8 bg-zinc-900 rounded-lg shadow">
       {fields.map((field) => (
@@ -304,6 +360,18 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
                               className="h-10 w-10 object-cover rounded"
                             />
                           )}
+                          <button
+                            type="button"
+                            className="ml-2 px-2 py-1 rounded text-red-400 hover:bg-red-900 hover:text-white"
+                            onClick={() => handleDeleteFile(file)}
+                            disabled={isDeleting[file.id]}
+                          >
+                            {isDeleting[file.id] ? (
+                              <span className="text-xs">Deleting...</span>
+                            ) : (
+                              <span>×</span>
+                            )}
+                          </button>
                         </div>
                       ))}
                     </div>
