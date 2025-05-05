@@ -5,6 +5,8 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
+import { Dropzone, DropzoneContent, DropzoneEmptyState } from '../dropzone';
+import { useSupabaseUpload } from '@/hooks/use-supabase-upload';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -22,6 +24,9 @@ interface Field {
     value_field: string;
     label_field: string;
   };
+  bucket?: string;
+  storage_path?: string;
+  acl?: string;
 }
 
 interface DynamicFormProps {
@@ -178,6 +183,54 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
       {fields.map((field) => (
         <div key={field.name} className="mb-6">
           <Label htmlFor={field.name} className="block mb-2 text-base font-medium">{field.label}</Label>
+          {field.type === 'file' && mode === 'edit' && recordId ? (
+            (() => {
+              const upload = useSupabaseUpload({
+                bucketName: field.bucket,
+                path: field.storage_path,
+                allowedMimeTypes: field.validations?.includes('image') ? ['image/*'] : undefined,
+                maxFiles: 1,
+                upsert: true,
+              });
+
+              const handleFileUpload = async () => {
+                await upload.onUpload();
+                if (upload.isSuccess && upload.files.length > 0) {
+                  const file = upload.files[0];
+                  const { data, error } = await supabase.from('forms.files').insert({
+                    resource_id: recordId,
+                    resource_table_name: tableName,
+                    field_name: field.name,
+                    bucket: field.bucket,
+                    path: `${field.storage_path}/${file.name}`,
+                    acl: field.acl || 'public',
+                    filename: file.name,
+                    mime_type: file.type,
+                    size: file.size,
+                    metadata: {},
+                  });
+                  if (error) {
+                    alert(`Error saving file metadata: ${error.message}`);
+                  }
+                }
+              };
+
+              return (
+                <Dropzone {...upload}>
+                  <DropzoneEmptyState />
+                  <DropzoneContent />
+                  <button
+                    type="button"
+                    className="mt-2 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={handleFileUpload}
+                    disabled={upload.loading || upload.files.some(f => f.errors.length > 0)}
+                  >
+                    Upload File
+                  </button>
+                </Dropzone>
+              );
+            })()
+          ) : null}
           {field.type === "text" && (
             <Input
               id={field.name}
