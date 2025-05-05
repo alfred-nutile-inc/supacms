@@ -340,16 +340,68 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
     try {
       console.log('Deleting file:', file);
       
-      // First, delete from storage bucket
-      const { error: storageError } = await supabase
-        .storage
-        .from(file.bucket)
-        .remove([file.path]);
-      
-      if (storageError) {
-        console.error('Error deleting file from storage:', storageError);
-        alert(`Error deleting file from storage: ${storageError.message}`);
-        return;
+      // Try different approaches to deleting the file from storage
+      if (file.bucket && file.path) {
+        // Log all possible paths to help debug
+        console.log('Attempting file deletion with the following paths:');
+        
+        // Path directly from database
+        const dbPath = file.path;
+        console.log('1. Database path:', dbPath);
+        
+        // Path with 'public/' removed if it exists
+        let noPublicPath = file.path;
+        if (noPublicPath.startsWith('public/')) {
+          noPublicPath = noPublicPath.replace('public/', '');
+        }
+        console.log('2. Path without public prefix:', noPublicPath);
+        
+        // Path with just the filename
+        const pathParts = file.path.split('/');
+        const filenameOnly = pathParts[pathParts.length - 1];
+        console.log('3. Filename only:', filenameOnly);
+        
+        // Try deleting with the original path first
+        console.log(`Attempting to delete from bucket "${file.bucket}" with path "${dbPath}"`);
+        let { error: storageError1 } = await supabase
+          .storage
+          .from(file.bucket)
+          .remove([dbPath]);
+        
+        if (storageError1) {
+          console.error('First deletion attempt failed:', storageError1);
+          
+          // Try with the no public prefix path
+          console.log(`Attempting to delete from bucket "${file.bucket}" with path "${noPublicPath}"`);
+          let { error: storageError2 } = await supabase
+            .storage
+            .from(file.bucket)
+            .remove([noPublicPath]);
+          
+          if (storageError2) {
+            console.error('Second deletion attempt failed:', storageError2);
+            
+            // Try with just the filename as a last resort
+            console.log(`Attempting to delete from bucket "${file.bucket}" with filename "${filenameOnly}"`);
+            let { error: storageError3 } = await supabase
+              .storage
+              .from(file.bucket)
+              .remove([filenameOnly]);
+            
+            if (storageError3) {
+              console.error('Third deletion attempt failed:', storageError3);
+              console.warn('All storage deletion attempts failed. Will continue with database deletion.');
+            } else {
+              console.log('Successfully deleted file using filename only!');
+            }
+          } else {
+            console.log('Successfully deleted file using path without public prefix!');
+          }
+        } else {
+          console.log('Successfully deleted file using original database path!');
+        }
+      } else {
+        console.error('Missing bucket or path information for file:', file);
       }
       
       // Then, delete from files table
@@ -364,6 +416,8 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
         return;
       }
       
+      console.log('File record successfully deleted from database');
+      
       // Update UI by removing the file from state
       setExistingFiles(prev => {
         const newFiles = { ...prev };
@@ -376,7 +430,7 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
         return newFiles;
       });
       
-      console.log('File deleted successfully');
+      console.log('File removed from UI');
     } catch (err) {
       console.error('Error in delete process:', err);
       alert('An unexpected error occurred while deleting the file');
