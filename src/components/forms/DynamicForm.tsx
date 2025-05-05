@@ -10,6 +10,7 @@ import { useSupabaseUpload } from '@/hooks/use-supabase-upload';
 import { Button } from "../ui/button";
 import { File, Loader2, CheckCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import MDEditor from '@uiw/react-md-editor';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -584,14 +585,17 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
             />
           )}
           {field.type === "textarea" && (
-            <Textarea
-              id={field.name}
-              className="mb-1 px-4 py-2"
-              value={values[field.name]}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              required={field.validations?.includes("required")}
-              maxLength={field.validations?.find((v) => v.startsWith("max:"))?.split(":")[1]}
-            />
+            <div data-color-mode="dark">
+              <MDEditor
+                id={field.name}
+                value={values[field.name]}
+                onChange={(value) => handleChange(field.name, value || "")}
+                textareaProps={{
+                  required: field.validations?.includes("required"),
+                  maxLength: field.validations?.find((v) => v.startsWith("max:"))?.split(":")[1]
+                }}
+              />
+            </div>
           )}
           {field.type === "checkbox" && (
             <input

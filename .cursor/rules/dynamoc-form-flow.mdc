@@ -145,3 +145,27 @@ so we check views with name "all" and then display none means hide it by default
 ## TextArea and Markdown
 
 if a JSON object is type: textarea we use the markdown editor library here to render and write the content
+
+```
+// Install with npm or yarn
+// npm install @tiptap/react @tiptap/extension-markdown @tiptap/starter-kit
+
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Markdown from '@tiptap/extension-markdown'
+
+// Then in your component:
+const editor = useEditor({
+  extensions: [
+    StarterKit,
+    Markdown,
+  ],
+  content: values[field.name], // Your initial content
+  onUpdate: ({ editor }) => {
+    handleChange(field.name, editor.getHTML())
+  },
+})
+
+// In your render method:
+<EditorContent editor={editor} className="mb-1 px-4 py-2" />
+```
