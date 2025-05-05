@@ -116,3 +116,32 @@ All file uploads are related to content by:
 	•	field_name → e.g., header_url, images
 
 This allows multiple file fields per resource, all cleanly managed via metadata.
+
+
+
+## Display Options
+
+when viewing a page like **forms/FORM_NAME/all**
+
+We might want to hide a field like body since it is too big
+
+```json
+{
+    "name": "content",
+    "type": "textarea",
+    "label": "Content",
+    "views": [
+        {
+        "name": "all",
+        "display": "none" 
+        }
+    ],
+}
+```
+
+so we check views with name "all" and then display none means hide it by default we show all columns
+
+
+## TextArea and Markdown
+
+if a JSON object is type: textarea we use the markdown editor library here to render and write the content
