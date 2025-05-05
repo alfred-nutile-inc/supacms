@@ -6,7 +6,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-type Field = { name: string; label?: string };
+type Field = { 
+  name: string; 
+  label?: string;
+  views?: { name: string; display: string }[];
+};
 
 export default async function RecordsListPage({ params }: { params: { table_name: string } }) {
   // 1. Fetch the form JSON schema for this table
@@ -20,7 +24,16 @@ export default async function RecordsListPage({ params }: { params: { table_name
     return <div className="text-red-500 p-8">Error loading form schema: {formError.message}</div>;
   }
 
-  const fields: Field[] = form?.json?.fields || [];
+  const allFields: Field[] = form?.json?.fields || [];
+  
+  // Filter out fields that should be hidden in the "all" view
+  const fields = allFields.filter(field => {
+    console.log(field);
+    if (!field.views) return true;
+    const allView = field.views.find(view => view.name === 'all');
+    return !allView || allView.display !== 'none';
+  });
+  
   const fieldNames = fields.map((f) => f.name);
 
   // 2. Fetch all records from the specified table

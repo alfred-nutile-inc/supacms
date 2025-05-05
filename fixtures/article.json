@@ -13,6 +13,12 @@
         "name": "content",
         "type": "textarea",
         "label": "Content",
+        "views": [
+          {
+            "name": "all",
+            "display": "none" 
+          }
+        ],
         "validations": [
           "required",
           "max:5000"

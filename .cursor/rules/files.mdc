@@ -60,3 +60,26 @@ Notes
 	•	This system supports versioning, previews, and access control via metadata expansion in the future.
 
 Let me know if you'd like a YAML version or if you want to define this as part of a schema in Cursor’s DSL.
+
+
+## Display Options
+
+when viewing a page like **forms/FORM_NAME/all**
+
+We might want to hide a field like body since it is too big
+
+```json
+{
+    "name": "content",
+    "type": "textarea",
+    "label": "Content",
+    "views": [
+        {
+        "name": "all",
+        "display": "none" 
+        }
+    ],
+}
+```
+
+so we check views with name "all" and then display none means hide it by default we show all columns
