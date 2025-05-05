@@ -112,10 +112,28 @@ SET row_security = off;
 -- Data for Name: authors; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+INSERT INTO "public"."authors" ("id", "created_at", "first_name", "last_name", "profile_url") VALUES
+	(21, '2025-05-05 14:27:05.276092+00', 'John', 'Doe', 'https://example.com/johndoe'),
+	(22, '2025-05-05 14:27:05.276092+00', 'Jane', 'Smith', 'https://example.com/janesmith'),
+	(23, '2025-05-05 14:27:05.276092+00', 'Alice', 'Johnson', 'https://example.com/alicejohnson'),
+	(24, '2025-05-05 14:27:05.276092+00', 'Bob', 'Brown', 'https://example.com/bobbrown');
 
 
 --
 -- Data for Name: articles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."articles" ("id", "created_at", "title", "content", "published", "tags", "author_id") VALUES
+	(19, '2025-05-05 14:28:13.140384+00', 'First Article', 'This is the content of the first article.', true, '{tag1,tag2}', 24),
+	(20, '2025-05-05 14:28:13.140384+00', 'Second Article', 'This is the content of the second article.', false, '{tag2,tag3}', 24),
+	(21, '2025-05-05 14:28:13.140384+00', 'Third Article', 'This is the content of the third article.', true, '{tag1,tag3}', 22),
+	(22, '2025-05-05 14:28:13.140384+00', 'Fourth Article', 'This is the content of the fourth article.', false, '{tag2}', 21),
+	(23, '2025-05-05 14:28:13.140384+00', 'Fifth Article', 'This is the content of the fifth article.', true, '{tag1,tag4}', 21),
+	(24, '2025-05-05 14:28:13.140384+00', 'Sixth Article', 'This is the content of the sixth article.', true, '{tag3,tag4}', 21);
+
+
+--
+-- Data for Name: files; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 
@@ -181,14 +199,21 @@ SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 1, false);
 -- Name: articles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('"public"."articles_id_seq"', 1, false);
+SELECT pg_catalog.setval('"public"."articles_id_seq"', 24, true);
 
 
 --
 -- Name: authors_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('"public"."authors_id_seq"', 1, false);
+SELECT pg_catalog.setval('"public"."authors_id_seq"', 24, true);
+
+
+--
+-- Name: files_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('"public"."files_id_seq"', 1, false);
 
 
 --

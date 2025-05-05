@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../../src/components/ui/table';
-import { Button } from '../../src/components/ui/button';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../../components/ui/table';
+import { Button } from '../../components/ui/button';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
