@@ -54,6 +54,7 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [relationOptions, setRelationOptions] = useState<Record<string, Array<{ value: any; label: string }>>>({});
   const [tagInput, setTagInput] = useState<Record<string, string>>({});
+  const [existingFiles, setExistingFiles] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     if (initialValues) setValues({ ...initialValues });
@@ -99,6 +100,42 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
   
     loadRelations();
   }, [fields]);
+
+  // Define fetchExistingFiles as a named function
+  const fetchExistingFiles = async () => {
+    if (mode === 'edit' && recordId) {
+      console.log('Fetching files for record:', recordId, 'in table:', tableName);
+      const { data, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('resource_id', recordId)
+        .eq('resource_table_name', tableName);
+      
+      if (error) {
+        console.error('Error fetching files:', error);
+        return;
+      }
+      
+      console.log('Found files:', data);
+      if (data && data.length > 0) {
+        // Group files by field_name
+        const filesByField: Record<string, any[]> = {};
+        data.forEach(file => {
+          if (!filesByField[file.field_name]) {
+            filesByField[file.field_name] = [];
+          }
+          filesByField[file.field_name].push(file);
+        });
+        setExistingFiles(filesByField);
+        console.log('Grouped files by field:', filesByField);
+      }
+    }
+  };
+  
+  useEffect(() => {
+    // Fetch existing files for this record if we're in edit mode
+    fetchExistingFiles();
+  }, [mode, recordId, tableName]);
 
   // Debug: log relationOptions state
   console.log('relationOptions', relationOptions);
@@ -156,9 +193,14 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
     if (onSubmit) {
       onSubmit(values);
     } else if (tableName) {
+      // Filter out file fields from values before submitting
       const cleanValues = Object.fromEntries(
-        Object.entries(values).filter(([_, v]) => v !== "")
+        Object.entries(values)
+          .filter(([key, v]) => v !== "" && !fields.find(f => f.name === key && f.type === 'file'))
       );
+      
+      console.log('Submitting form with cleaned values (excluding file fields):', cleanValues);
+      
       let data, error;
       if (mode === 'edit' && recordId) {
         ({ data, error } = await supabase.from(tableName).update(cleanValues).eq('id', recordId).select());
@@ -186,8 +228,8 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
           {field.type === 'file' && mode === 'edit' && recordId ? (
             (() => {
               const upload = useSupabaseUpload({
-                bucketName: field.bucket,
-                path: field.storage_path,
+                bucketName: field.bucket || '',
+                path: field.storage_path || '',
                 allowedMimeTypes: field.validations?.includes('image') ? ['image/*'] : undefined,
                 maxFiles: 1,
                 upsert: true,
@@ -197,37 +239,91 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
                 await upload.onUpload();
                 if (upload.isSuccess && upload.files.length > 0) {
                   const file = upload.files[0];
-                  const { data, error } = await supabase.from('forms.files').insert({
+                  console.log('File uploaded successfully:', file);
+                  
+                  // Get the resource_table_name from the form.json.form_name if available, otherwise use tableName
+                  let resource_table = tableName;
+                  
+                  // Format the path to match what would be in storage
+                  const fullPath = field.storage_path ? `${field.storage_path}/${file.name}` : file.name;
+                  
+                  console.log('Inserting into files table with:', {
                     resource_id: recordId,
-                    resource_table_name: tableName,
+                    resource_table_name: resource_table,
                     field_name: field.name,
-                    bucket: field.bucket,
-                    path: `${field.storage_path}/${file.name}`,
-                    acl: field.acl || 'public',
-                    filename: file.name,
-                    mime_type: file.type,
-                    size: file.size,
-                    metadata: {},
+                    fullPath,
                   });
+                  
+                  // Create the file metadata record
+                  const { data, error } = await supabase
+                    .from('files')
+                    .insert({
+                      resource_id: recordId,
+                      resource_table_name: resource_table,
+                      field_name: field.name,
+                      bucket: field.bucket || '',
+                      path: fullPath,
+                      acl: field.acl || 'public',
+                      filename: file.name,
+                      mime_type: file.type,
+                      size: file.size,
+                      metadata: {},
+                    })
+                    .select();
+                  
+                  console.log('File metadata insert result:', { data, error });
+                  
                   if (error) {
                     alert(`Error saving file metadata: ${error.message}`);
+                    console.error('File metadata insert error:', error);
+                  } else {
+                    // For file fields, we don't need to update the main record
+                    // We'll just rely on the relationship through the files table
+                    console.log('File metadata saved successfully. Not updating main record for file fields.');
+                    
+                    // Force a refresh of the file list after successful upload
+                    await fetchExistingFiles();
                   }
                 }
               };
 
               return (
-                <Dropzone {...upload}>
-                  <DropzoneEmptyState />
-                  <DropzoneContent />
-                  <button
-                    type="button"
-                    className="mt-2 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-                    onClick={handleFileUpload}
-                    disabled={upload.loading || upload.files.some(f => f.errors.length > 0)}
-                  >
-                    Upload File
-                  </button>
-                </Dropzone>
+                <div>
+                  {/* Show existing files if any */}
+                  {existingFiles[field.name] && existingFiles[field.name].length > 0 ? (
+                    <div className="mb-4 space-y-2">
+                      <h4 className="text-sm font-medium text-zinc-400">Current files:</h4>
+                      {existingFiles[field.name].map(file => (
+                        <div key={file.id} className="flex items-center p-2 bg-zinc-800 rounded">
+                          <span className="mr-auto text-sm">{file.filename}</span>
+                          <span className="text-xs text-zinc-400 mx-2">({file.path})</span>
+                          {file.mime_type?.startsWith('image/') && (
+                            <img 
+                              src={`${supabaseUrl}/storage/v1/object/public/${file.bucket}/${file.path}`}
+                              alt={file.filename}
+                              className="h-10 w-10 object-cover rounded"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-zinc-400 mb-2">No files uploaded yet</div>
+                  )}
+
+                  <Dropzone {...upload}>
+                    <DropzoneEmptyState />
+                    <DropzoneContent />
+                    <button
+                      type="button"
+                      className="mt-2 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={handleFileUpload}
+                      disabled={upload.loading || upload.files.some(f => f.errors.length > 0)}
+                    >
+                      Upload File
+                    </button>
+                  </Dropzone>
+                </div>
               );
             })()
           ) : null}
