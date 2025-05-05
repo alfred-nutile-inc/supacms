@@ -5,8 +5,11 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
-import { Dropzone, DropzoneContent, DropzoneEmptyState } from '../dropzone';
+import { Dropzone, DropzoneContent, DropzoneEmptyState, useDropzoneContext } from '../dropzone';
 import { useSupabaseUpload } from '@/hooks/use-supabase-upload';
+import { Button } from "../ui/button";
+import { File, Loader2, CheckCircle, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -37,6 +40,112 @@ interface DynamicFormProps {
   mode?: 'create' | 'edit';
   recordId?: string;
 }
+
+// Custom DropzoneContent without the default Upload files button
+const CustomDropzoneContent = ({ className }: { className?: string }) => {
+  const {
+    files,
+    setFiles,
+    loading,
+    successes,
+    errors,
+    maxFileSize,
+    isSuccess,
+  } = useDropzoneContext();
+
+  const handleRemoveFile = (fileName: string) => {
+    setFiles(files.filter((file) => file.name !== fileName));
+  };
+
+  if (isSuccess) {
+    return (
+      <div className={cn('flex flex-row items-center gap-x-2 justify-center', className)}>
+        <CheckCircle size={16} className="text-primary" />
+        <p className="text-primary text-sm">
+          Successfully uploaded {files.length} file{files.length > 1 ? 's' : ''}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('flex flex-col', className)}>
+      {files.map((file, idx) => {
+        const fileError = errors.find((e) => e.name === file.name);
+        const isSuccessfullyUploaded = !!successes.find((e) => e === file.name);
+
+        return (
+          <div
+            key={`${file.name}-${idx}`}
+            className="flex items-center gap-x-4 border-b py-2 first:mt-4 last:mb-4"
+          >
+            {file.type.startsWith('image/') ? (
+              <div className="h-10 w-10 rounded border overflow-hidden shrink-0 bg-muted flex items-center justify-center">
+                <img src={file.preview} alt={file.name} className="object-cover" />
+              </div>
+            ) : (
+              <div className="h-10 w-10 rounded border bg-muted flex items-center justify-center">
+                <File size={18} />
+              </div>
+            )}
+
+            <div className="shrink grow flex flex-col items-start truncate">
+              <p title={file.name} className="text-sm truncate max-w-full">
+                {file.name}
+              </p>
+              {file.errors.length > 0 ? (
+                <p className="text-xs text-destructive">
+                  {file.errors
+                    .map((e) =>
+                      e.message.startsWith('File is larger than')
+                        ? `File is larger than ${formatBytes(maxFileSize, 2)} (Size: ${formatBytes(file.size, 2)})`
+                        : e.message
+                    )
+                    .join(', ')}
+                </p>
+              ) : loading && !isSuccessfullyUploaded ? (
+                <p className="text-xs text-muted-foreground">Uploading file...</p>
+              ) : !!fileError ? (
+                <p className="text-xs text-destructive">Failed to upload: {fileError.message}</p>
+              ) : isSuccessfullyUploaded ? (
+                <p className="text-xs text-primary">Successfully uploaded file</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">{formatBytes(file.size, 2)}</p>
+              )}
+            </div>
+
+            {!loading && !isSuccessfullyUploaded && (
+              <Button
+                size="icon"
+                variant="link"
+                className="shrink-0 justify-self-end text-muted-foreground hover:text-foreground"
+                onClick={() => handleRemoveFile(file.name)}
+              >
+                <X />
+              </Button>
+            )}
+          </div>
+        );
+      })}
+      {/* No Upload files button here */}
+    </div>
+  );
+};
+
+// Helper function to format bytes
+const formatBytes = (
+  bytes: number,
+  decimals = 2,
+  size?: 'bytes' | 'KB' | 'MB' | 'GB' | 'TB' | 'PB' | 'EB' | 'ZB' | 'YB'
+) => {
+  const k = 1000;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+  if (bytes === 0 || bytes === undefined) return size !== undefined ? `0 ${size}` : '0 bytes';
+  const i = size !== undefined ? sizes.indexOf(size) : Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+};
 
 export default function DynamicForm({ fields, tableName, onSubmit, initialValues, mode = 'create', recordId }: DynamicFormProps) {
   const router = useRouter();
@@ -291,55 +400,66 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
                 upsert: true,
               });
 
-              const handleFileUpload = async () => {
-                await upload.onUpload();
-                if (upload.isSuccess && upload.files.length > 0) {
-                  const file = upload.files[0];
-                  console.log('File uploaded successfully:', file);
-                  
-                  // Get the resource_table_name from the form.json.form_name if available, otherwise use tableName
-                  let resource_table = tableName;
-                  
-                  // Format the path to match what would be in storage
-                  const fullPath = field.storage_path ? `${field.storage_path}/${file.name}` : file.name;
-                  
-                  console.log('Inserting into files table with:', {
+              // Monitor changes to files array for automatic uploads
+              useEffect(() => {
+                // Check if there are successfully uploaded files
+                const hasSuccessfulUploads = upload.isSuccess && upload.files.length > 0;
+                
+                if (hasSuccessfulUploads) {
+                  console.log('Detected successful file upload, saving metadata...');
+                  saveFileMetadata();
+                }
+              }, [upload.isSuccess, upload.files.length]);
+              
+              // Extract file save logic to its own function
+              const saveFileMetadata = async () => {
+                if (!upload.isSuccess || upload.files.length === 0) return;
+                
+                const file = upload.files[0];
+                console.log('Saving metadata for file:', file);
+                
+                // Get the resource_table_name from the form.json.form_name if available, otherwise use tableName
+                let resource_table = tableName;
+                
+                // Format the path to match what would be in storage
+                const fullPath = field.storage_path ? `${field.storage_path}/${file.name}` : file.name;
+                
+                console.log('Inserting into files table with:', {
+                  resource_id: recordId,
+                  resource_table_name: resource_table,
+                  field_name: field.name,
+                  fullPath,
+                });
+                
+                // Create the file metadata record
+                const { data, error } = await supabase
+                  .from('files')
+                  .insert({
                     resource_id: recordId,
                     resource_table_name: resource_table,
                     field_name: field.name,
-                    fullPath,
-                  });
+                    bucket: field.bucket || '',
+                    path: fullPath,
+                    acl: field.acl || 'public',
+                    filename: file.name,
+                    mime_type: file.type,
+                    size: file.size,
+                    metadata: {},
+                  })
+                  .select();
+                
+                console.log('File metadata insert result:', { data, error });
+                
+                if (error) {
+                  alert(`Error saving file metadata: ${error.message}`);
+                  console.error('File metadata insert error:', error);
+                } else {
+                  // For file fields, we don't need to update the main record
+                  // We'll just rely on the relationship through the files table
+                  console.log('File metadata saved successfully. Not updating main record for file fields.');
                   
-                  // Create the file metadata record
-                  const { data, error } = await supabase
-                    .from('files')
-                    .insert({
-                      resource_id: recordId,
-                      resource_table_name: resource_table,
-                      field_name: field.name,
-                      bucket: field.bucket || '',
-                      path: fullPath,
-                      acl: field.acl || 'public',
-                      filename: file.name,
-                      mime_type: file.type,
-                      size: file.size,
-                      metadata: {},
-                    })
-                    .select();
-                  
-                  console.log('File metadata insert result:', { data, error });
-                  
-                  if (error) {
-                    alert(`Error saving file metadata: ${error.message}`);
-                    console.error('File metadata insert error:', error);
-                  } else {
-                    // For file fields, we don't need to update the main record
-                    // We'll just rely on the relationship through the files table
-                    console.log('File metadata saved successfully. Not updating main record for file fields.');
-                    
-                    // Force a refresh of the file list after successful upload
-                    await fetchExistingFiles();
-                  }
+                  // Force a refresh of the file list after successful upload
+                  await fetchExistingFiles();
                 }
               };
 
@@ -381,15 +501,19 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
 
                   <Dropzone {...upload}>
                     <DropzoneEmptyState />
-                    <DropzoneContent />
-                    <button
-                      type="button"
-                      className="mt-2 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-                      onClick={handleFileUpload}
-                      disabled={upload.loading || upload.files.some(f => f.errors.length > 0)}
-                    >
-                      Upload File
-                    </button>
+                    <CustomDropzoneContent />
+                    {upload.files.length > 0 && !upload.isSuccess && (
+                      <div className="mt-2 text-center">
+                        <button
+                          type="button"
+                          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 w-full"
+                          onClick={upload.onUpload}
+                          disabled={upload.loading || upload.files.some(f => f.errors.length > 0)}
+                        >
+                          {upload.loading ? 'Uploading...' : 'Upload to Storage'}
+                        </button>
+                      </div>
+                    )}
                   </Dropzone>
                 </div>
               );
