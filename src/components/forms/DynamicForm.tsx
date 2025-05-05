@@ -178,6 +178,9 @@ export default function DynamicForm({ fields, tableName, onSubmit, initialValues
       const results = await Promise.all(
         relationFields.map(async (field) => {
           const { relation } = field;
+          if (!relation) {
+            return { name: field.name, options: [] };
+          }
           const { data, error } = await supabase
             .from(relation.table)
             .select(`${relation.value_field}, ${relation.label_field}`);

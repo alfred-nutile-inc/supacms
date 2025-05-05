@@ -12,12 +12,14 @@ type Field = {
   views?: { name: string; display: string }[];
 };
 
-export default async function RecordsListPage({ params }: { params: { table_name: string } }) {
+export default async function RecordsListPage({ params }: { params: Promise<{ table_name: string }> }) {
+  const resolvedParams = await params;
+  
   // 1. Fetch the form JSON schema for this table
   const { data: form, error: formError } = await supabase
     .from('forms')
     .select('json')
-    .eq('table_name', params.table_name)
+    .eq('table_name', resolvedParams.table_name)
     .single();
 
   if (formError) {
@@ -40,7 +42,7 @@ export default async function RecordsListPage({ params }: { params: { table_name
   let records: Record<string, unknown>[] = [];
   let recordsError: { message: string } | null = null;
   try {
-    const { data, error } = await supabase.from(params.table_name).select('*');
+    const { data, error } = await supabase.from(resolvedParams.table_name).select('*');
     if (error) recordsError = error;
     else records = data || [];
   } catch (e) {
@@ -54,9 +56,9 @@ export default async function RecordsListPage({ params }: { params: { table_name
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold capitalize">{params.table_name} Records</h1>
+        <h1 className="text-2xl font-bold capitalize">{resolvedParams.table_name} Records</h1>
         <Link
-          href={`/forms/${params.table_name}/create`}
+          href={`/forms/${resolvedParams.table_name}/create`}
           className="inline-block px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors font-semibold"
         >
           + Create
@@ -79,7 +81,7 @@ export default async function RecordsListPage({ params }: { params: { table_name
               ))}
               <TableCell>
                 <Link
-                  href={`/forms/${params.table_name}/${record.id}/edit`}
+                  href={`/forms/${resolvedParams.table_name}/${record.id}/edit`}
                   className="inline-block px-3 py-1 rounded bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700 transition-colors"
                 >
                   Edit
